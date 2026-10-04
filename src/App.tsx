@@ -129,6 +129,7 @@ export default function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [bestMoveAnalysis, setBestMoveAnalysis] = useState<BestMoveAnalysis | null>(null);
   const [isShowingArrow, setIsShowingArrow] = useState(true);
+  const [arrowTargetSide, setArrowTargetSide] = useState<'auto' | 'w' | 'b'>('auto');
   const [evalScoreCp, setEvalScoreCp] = useState<number>(0);
   const [isMate, setIsMate] = useState(false);
   const [mateIn, setMateIn] = useState<number | undefined>();
@@ -191,6 +192,26 @@ export default function App() {
     }
   }, []);
 
+  // Compute effective FEN when user requests arrows specifically for White ('w') or Black ('b')
+  const getEffectiveFenForAnalysis = useCallback(
+    (baseFen: string, targetSide: 'auto' | 'w' | 'b'): string => {
+      if (targetSide === 'auto' || !isValidChessFen(baseFen)) {
+        return baseFen;
+      }
+      const parts = baseFen.split(' ');
+      if (parts.length >= 2 && parts[1] !== targetSide) {
+        const candidateParts = [...parts];
+        candidateParts[1] = targetSide;
+        const candidateFen = candidateParts.join(' ');
+        if (isValidChessFen(candidateFen)) {
+          return candidateFen;
+        }
+      }
+      return baseFen;
+    },
+    []
+  );
+
   useEffect(() => {
     updateEvaluation(fen);
   }, [fen, updateEvaluation]);
@@ -199,14 +220,24 @@ export default function App() {
   // Works in both 'game' mode and 'sandbox' (serbest dizilim) mode!
   // Note: If a blunder puzzle is actively in progress, don't spoil it with arrows unless hint is requested!
   useEffect(() => {
-    if (isAutoAssisted && isValidChessFen(fen) && (gameMode === 'game' || gameMode === 'sandbox')) {
+    if (isAutoAssisted && (gameMode === 'game' || gameMode === 'sandbox')) {
       if (activeBlunderPuzzle && !activeBlunderPuzzle.isSolved && !activeBlunderPuzzle.showHint) {
         return; // Don't spoil the blunder puzzle!
       }
 
+      const effectiveFen = getEffectiveFenForAnalysis(fen, arrowTargetSide);
+
+      if (!isValidChessFen(effectiveFen)) {
+        if (gameMode === 'sandbox') {
+          setBestMoveAnalysis(null);
+          setIsShowingArrow(false);
+        }
+        return;
+      }
+
       const pastSanMoves = history.map((h) => h.san);
       chessEngine
-        .analyzePosition(fen, 3, suggestionCount, currentElo, pastSanMoves, showBlunderArrow)
+        .analyzePosition(effectiveFen, 3, suggestionCount, currentElo, pastSanMoves, showBlunderArrow)
         .then((analysis) => {
           setBestMoveAnalysis(analysis);
           setIsShowingArrow(true);
@@ -219,11 +250,24 @@ export default function App() {
       setBestMoveAnalysis(null);
       setIsShowingArrow(false);
     }
-  }, [fen, isAutoAssisted, suggestionCount, currentElo, showBlunderArrow, history, gameMode, activeBlunderPuzzle]);
+  }, [
+    fen,
+    isAutoAssisted,
+    suggestionCount,
+    currentElo,
+    showBlunderArrow,
+    history,
+    gameMode,
+    activeBlunderPuzzle,
+    arrowTargetSide,
+    getEffectiveFenForAnalysis,
+  ]);
 
   // Request Multi-PV Best Moves Manually
   const handleAnalyzeBestMove = async () => {
-    if (!isValidChessFen(fen)) {
+    const effectiveFen = getEffectiveFenForAnalysis(fen, arrowTargetSide);
+
+    if (!isValidChessFen(effectiveFen)) {
       setMascotMessage('⚠️ Otomatik okların ve analizin çalışabilmesi için tahtada en az 1 Beyaz Şah ve 1 Siyah Şah olmalı!');
       soundFx.playBlunder();
       return;
@@ -233,7 +277,7 @@ export default function App() {
     try {
       const pastSanMoves = history.map((h) => h.san);
       const analysis = await chessEngine.analyzePosition(
-        fen,
+        effectiveFen,
         3,
         suggestionCount,
         currentElo,
@@ -251,7 +295,8 @@ export default function App() {
       soundFx.playBestMove();
       triggerStarBurst(0.5, 0.4);
 
-      setMascotMessage(`Buldum! 🌟 ${analysis.explanation.shortSummary}`);
+      const targetLabel = arrowTargetSide === 'w' ? 'Beyaz' : arrowTargetSide === 'b' ? 'Siyah' : 'Sıradaki oyuncu';
+      setMascotMessage(`Buldum! 🌟 (${targetLabel} için) ${analysis.explanation.shortSummary}`);
       setMascotSubMessage(
         `Tahtaya ${analysis.suggestions.length} renkli taktik oku yerleştirdim: 🟢 Yeşil (1. En İyi), 🔵 Mavi (2. En İyi), 🟠 Turuncu (Alternatif)${
           showBlunderArrow ? ', 🔴 Kırmızı (Hata)' : ''
@@ -1003,8 +1048,8 @@ export default function App() {
                   </button>
                 </div>
 
-                {/* Auto-Assisted & Bot Switch */}
-                <div className="flex items-center gap-1.5">
+                {/* Auto-Assisted, Target Side & Bot Switch */}
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <button
                     onClick={() => setIsAutoAssisted(!isAutoAssisted)}
                     className={`px-2.5 py-1 rounded-xl font-black text-xs flex items-center gap-1 transition-all cursor-pointer ${
@@ -1015,8 +1060,45 @@ export default function App() {
                     title="Her hamlede otomatik taktik oklarını aç/kapat"
                   >
                     <Zap className="w-3.5 h-3.5" />
-                    <span>{isAutoAssisted ? '⚡ Otomatik Oklar' : 'Oklar Kapalı'}</span>
+                    <span>{isAutoAssisted ? '⚡ Oklar Açık' : 'Oklar Kapalı'}</span>
                   </button>
+
+                  {/* Quick Arrow Target Side Selector (Kimin İçin: Sıradaki | Beyaz | Siyah) */}
+                  <div className="flex items-center p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold">
+                    <button
+                      onClick={() => setArrowTargetSide('auto')}
+                      className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
+                        arrowTargetSide === 'auto'
+                          ? 'bg-emerald-600 text-white shadow-xs font-black'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                      title="Okları sırası gelen tarafa göre göster"
+                    >
+                      🔄 Sıradaki
+                    </button>
+                    <button
+                      onClick={() => setArrowTargetSide('w')}
+                      className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
+                        arrowTargetSide === 'w'
+                          ? 'bg-white text-amber-900 font-black shadow-xs ring-1 ring-amber-400 dark:bg-amber-950 dark:text-amber-200'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                      title="Her zaman Beyaz için en iyi hamle oklarını göster"
+                    >
+                      ⚪ Beyaz
+                    </button>
+                    <button
+                      onClick={() => setArrowTargetSide('b')}
+                      className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
+                        arrowTargetSide === 'b'
+                          ? 'bg-slate-900 text-white font-black shadow-xs ring-1 ring-slate-400 dark:bg-slate-950'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                      title="Her zaman Siyah için en iyi hamle oklarını göster"
+                    >
+                      ⚫ Siyah
+                    </button>
+                  </div>
 
                   <button
                     onClick={() => setPlayVsAi(!playVsAi)}
@@ -1079,6 +1161,8 @@ export default function App() {
                 onChangeSuggestionCount={setSuggestionCount}
                 showBlunderArrow={showBlunderArrow}
                 onToggleShowBlunder={() => setShowBlunderArrow(!showBlunderArrow)}
+                arrowTargetSide={arrowTargetSide}
+                onChangeArrowTargetSide={setArrowTargetSide}
               />
 
               {/* "En İyi Hamle" (Best Move) Trigger and Multi-Color Cards (Desktop) */}

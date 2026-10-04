@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  SlidersHorizontal,
   ChevronDown,
   ChevronUp,
   Sparkles,
   Info,
-  ShieldAlert,
-  Flame,
+  Target,
 } from 'lucide-react';
 import { ELO_PRESETS } from '../data/eloPresets';
-import { EloPreset } from '../types/chess';
 
 interface EloAndSuggestionControlsProps {
   currentElo: number;
@@ -19,6 +16,8 @@ interface EloAndSuggestionControlsProps {
   onChangeSuggestionCount: (count: number) => void;
   showBlunderArrow: boolean;
   onToggleShowBlunder: () => void;
+  arrowTargetSide: 'auto' | 'w' | 'b';
+  onChangeArrowTargetSide: (side: 'auto' | 'w' | 'b') => void;
 }
 
 export const EloAndSuggestionControls: React.FC<EloAndSuggestionControlsProps> = ({
@@ -28,6 +27,8 @@ export const EloAndSuggestionControls: React.FC<EloAndSuggestionControlsProps> =
   onChangeSuggestionCount,
   showBlunderArrow,
   onToggleShowBlunder,
+  arrowTargetSide,
+  onChangeArrowTargetSide,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -37,6 +38,12 @@ export const EloAndSuggestionControls: React.FC<EloAndSuggestionControlsProps> =
     ELO_PRESETS.reduce((prev, curr) =>
       Math.abs(curr.elo - currentElo) < Math.abs(prev.elo - currentElo) ? curr : prev
     );
+
+  const getTargetSideLabel = () => {
+    if (arrowTargetSide === 'w') return '⚪ Beyaz Okları';
+    if (arrowTargetSide === 'b') return '⚫ Siyah Okları';
+    return '🔄 Sıradaki';
+  };
 
   return (
     <div className="bg-white/95 backdrop-blur-md rounded-2xl border-2 border-slate-200/90 shadow-sm overflow-hidden transition-all">
@@ -52,15 +59,18 @@ export const EloAndSuggestionControls: React.FC<EloAndSuggestionControlsProps> =
             {activePreset.character}
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-extrabold text-xs text-slate-800">
                 Motor Gücü & ELO:
               </span>
               <span className="font-mono font-black text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
                 {currentElo} ELO
               </span>
+              <span className="text-[10px] font-black text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                {getTargetSideLabel()}
+              </span>
             </div>
-            <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-1.5">
+            <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-1.5 flex-wrap">
               <span>{activePreset.title}</span>
               <span>•</span>
               <span className="text-emerald-600 font-bold">{suggestionCount} Ok</span>
@@ -93,9 +103,14 @@ export const EloAndSuggestionControls: React.FC<EloAndSuggestionControlsProps> =
           >
             {/* ELO Presets Grid */}
             <div>
-              <label className="block text-xs font-extrabold text-slate-700 mb-1.5">
-                Seviye Seç (Chess.com ELO):
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-extrabold text-slate-700">
+                  Seviye Seç (Chess.com ELO):
+                </label>
+                <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                  ⚡ Optimize & Hızlı
+                </span>
+              </div>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                 {ELO_PRESETS.map((p) => {
                   const isSelected = p.elo === currentElo;
@@ -103,29 +118,83 @@ export const EloAndSuggestionControls: React.FC<EloAndSuggestionControlsProps> =
                     <button
                       key={p.elo}
                       onClick={() => onChangeElo(p.elo)}
-                      className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
+                      className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
                         isSelected
-                          ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm ring-2 ring-emerald-300'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm font-black'
+                          : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 font-semibold'
                       }`}
                     >
-                      <span className="text-base">{p.character}</span>
-                      <span className="font-mono font-black text-[11px]">{p.elo}</span>
-                      <span className="text-[9px] font-semibold truncate w-full">
-                        {p.title.split(' ')[0]}
-                      </span>
+                      <div className="text-base">{p.character}</div>
+                      <div className="text-xs font-black">{p.elo}</div>
+                      <div
+                        className={`text-[9px] truncate ${
+                          isSelected ? 'text-emerald-100' : 'text-slate-400'
+                        }`}
+                      >
+                        {p.title}
+                      </div>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Suggestions Count Selection */}
+            {/* Oklar Kimin İçin Gösterilsin? (White / Black / Auto Target Side Option) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-white border border-slate-200">
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-emerald-600 shrink-0" />
+                <div>
+                  <div className="text-xs font-extrabold text-slate-800">
+                    Oklar Kimin İçin Gösterilsin?
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    Sırası gelen tarafı veya özel olarak Beyaz/Siyah'ın taktik planlarını göster.
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0">
+                <button
+                  onClick={() => onChangeArrowTargetSide('auto')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                    arrowTargetSide === 'auto'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  🔄 Sıradaki (Oto)
+                </button>
+                <button
+                  onClick={() => onChangeArrowTargetSide('w')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                    arrowTargetSide === 'w'
+                      ? 'bg-amber-100 text-amber-900 shadow-xs ring-1 ring-amber-400'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  ⚪ Beyaz
+                </button>
+                <button
+                  onClick={() => onChangeArrowTargetSide('b')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                    arrowTargetSide === 'b'
+                      ? 'bg-slate-900 text-white shadow-xs ring-1 ring-emerald-400'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  ⚫ Siyah
+                </button>
+              </div>
+            </div>
+
+            {/* Suggestion Count (Multi-PV Slider/Buttons) */}
             <div>
-              <div className="flex items-center justify-between text-xs font-extrabold text-slate-700 mb-1.5">
-                <span>Aynı Anda Gösterilecek Öneri Sayısı:</span>
-                <span className="font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                  {suggestionCount} Farklı Hamle Oku
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-extrabold text-slate-700">
+                  Gösterilecek Alternatif Hamle Sayısı:
+                </label>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  {suggestionCount} Farklı Ok
                 </span>
               </div>
               <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200">
@@ -171,7 +240,7 @@ export const EloAndSuggestionControls: React.FC<EloAndSuggestionControlsProps> =
               </button>
             </div>
 
-            {/* Color Legend (as requested) */}
+            {/* Color Legend */}
             <div className="p-3 bg-white rounded-xl border border-slate-200 text-[11px] space-y-1.5">
               <div className="font-black text-slate-700 flex items-center gap-1 text-xs">
                 <Info className="w-3.5 h-3.5 text-sky-500" />
