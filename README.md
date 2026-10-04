@@ -1,5 +1,9 @@
 # ♟️ ChessLab
 
+
+[![Live Demo](https://img.shields.io/badge/Live_Demo-chess--lab--theta.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://chess-lab-theta.vercel.app)
+
+
 <p align="center">
   <strong>Comprehensive AI Chess Training, Real-Time Engine Analysis & Academy Platform</strong><br>
   <em>Yapay Zeka Destekli Kapsamlı Satranç Gelişim, Canlı Analiz ve Akademi Platformu</em>
@@ -23,7 +27,7 @@
 #### 1. Real-Time Dynamic Analysis & Evaluation Bar
 * **Dynamic Centipawn Bar:** Smoothly reflects engine evaluations, advantage changes, and game swings in real time.
 * **Top 1–3 Engine Move Suggestions:** Live tactical evaluation revealing the primary engine line and alternative continuations with directional arrows.
-* **En Kötü Hamle Uyarısı (Blunder Prevention):** Red highlight warnings identifying potential immediate mistakes and hanging pieces before committing the move.
+* **Worst Move Protector (Blunder Prevention):** Red highlight warnings identifying potential immediate mistakes and hanging pieces before committing the move.
 * **Color-Coded Tactical Arrows:** Visual cues categorizing best moves (green), candidate alternatives (blue), tactical traps (orange), and blunder warnings (red).
 
 #### 2. Grandmaster Divo (Interactive AI Mascot Coach)
