@@ -1,0 +1,6 @@
+{
+  "name": "Süper Satranç Dünyası & Akıllı Analiz",
+  "description": "Çocuk dostu ve profesyonel satranç oyun alanı! Gerçek zamanlı motor analizi, görsel taktik okları, serbest dizilim laboratuvarı ve etkileşimli hamle rehberi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
