@@ -13,13 +13,6 @@
   <img src="https://img.shields.io/badge/Google_Gemini-2.5_Flash-orange?style=for-the-badge&logo=google" alt="Google Gemini" />
 </p>
 
----
-
-## 🌐 Language Navigation / Dil Seçimi
-- [English Documentation](#-english-documentation)
-- [Türkçe Dokümantasyon](#-türkçe-dokümantasyon)
-
----
 
 ## 🇬🇧 English Documentation
 
